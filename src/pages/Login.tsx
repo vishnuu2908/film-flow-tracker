@@ -6,14 +6,16 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Clapperboard, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const Login = () => {
-  const { user, loading, signIn } = useAuth();
+  const { user, loading } = useAuth();
   const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
 
   if (loading) {
     return (
@@ -29,11 +31,18 @@ const Login = () => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      await signIn(email, password);
-      toast({ title: "Welcome back!", description: "Successfully logged in." });
+      if (isSignUp) {
+        const { error } = await supabase.auth.signUp({ email, password });
+        if (error) throw error;
+        toast({ title: "Account created!", description: "You are now logged in." });
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        toast({ title: "Welcome back!", description: "Successfully logged in." });
+      }
     } catch (error: any) {
       toast({
-        title: "Login failed",
+        title: isSignUp ? "Sign up failed" : "Login failed",
         description: error.message || "Invalid credentials",
         variant: "destructive",
       });
@@ -50,7 +59,7 @@ const Login = () => {
             <Clapperboard className="h-8 w-8" />
           </div>
           <CardTitle className="text-2xl font-bold">Short Film Tracker</CardTitle>
-          <CardDescription>Sign in to manage your film projects</CardDescription>
+          <CardDescription>{isSignUp ? "Create your admin account" : "Sign in to manage your film projects"}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -73,6 +82,7 @@ const Login = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  minLength={6}
                 />
                 <button
                   type="button"
@@ -84,9 +94,18 @@ const Login = () => {
               </div>
             </div>
             <Button type="submit" className="w-full" size="lg" disabled={isSubmitting}>
-              {isSubmitting ? "Signing in..." : "Sign In"}
+              {isSubmitting ? (isSignUp ? "Creating account..." : "Signing in...") : (isSignUp ? "Create Account" : "Sign In")}
             </Button>
           </form>
+          <div className="mt-4 text-center">
+            <button
+              type="button"
+              onClick={() => setIsSignUp(!isSignUp)}
+              className="text-sm text-primary hover:underline"
+            >
+              {isSignUp ? "Already have an account? Sign in" : "Need an account? Sign up"}
+            </button>
+          </div>
         </CardContent>
       </Card>
     </div>
